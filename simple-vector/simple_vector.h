@@ -151,15 +151,6 @@ public:
         size_ = 0;
     }
 
-    // на замену std::fill для поддержки семантики перемещения метода Resize
-    void Fill(Iterator first, Iterator last) {
-        assert(first < last);
-
-        for (; first != last; ++first) {
-            *first = std::move(Type());
-        }
-    }
-
     void FillForMove(Iterator first, Iterator last) {
         for (; first != last; ++first) {
             *first = std::move(Type());
