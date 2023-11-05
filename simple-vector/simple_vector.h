@@ -76,9 +76,9 @@ public:
 
     SimpleVector& operator=(const SimpleVector& rhs) {
         if (&simple_vector_ != &rhs.simple_vector_) {
-            ArrayPtr<Type> temp(rhs.GetCapacity());
-            std::copy(rhs.begin(), rhs.end(), temp.Get());
-            simple_vector_.swap(temp);
+            ArrayPtr<Type> local(rhs.capacity_);
+            std::copy(rhs.begin(), rhs.end(), local.Get());
+            simple_vector_.swap(local);
             size_ = rhs.GetSize();
             capacity_ = rhs.GetCapacity();
         }
@@ -86,10 +86,12 @@ public:
     }
 
     Type& operator[](size_t index) noexcept {
+        assert(index < size_);
         return simple_vector_[index];
     }
 
     const Type& operator[](size_t index) const noexcept {
+        assert(index < size_);
         return simple_vector_[index];
     }
 
@@ -151,12 +153,6 @@ public:
         size_ = 0;
     }
 
-    void FillForMove(Iterator first, Iterator last) {
-        for (; first != last; ++first) {
-            *first = std::move(Type());
-        }
-    }
-
     void Resize(size_t new_size) {
         if (size_ >= new_size) {
             size_ = new_size;
@@ -203,67 +199,68 @@ public:
     }
 
     Iterator Insert(ConstIterator pos, const Type& value) {
-        if (begin() > pos && end() > pos) {
-            throw std::out_of_range("Out of range");
-        }
+        assert(pos >= begin());
+        assert(pos <= end()); 
         auto index_position = std::distance(cbegin(), pos);
-        if (capacity_ == 0) {
-            ArrayPtr<Type> local(1);
-            local[index_position] = value;
-            simple_vector_.swap(local);
-            ++capacity_;
-        }
-        else if (size_ < capacity_) {
+        if (size_ < capacity_) {
             std::copy_backward(simple_vector_.Get() + index_position, simple_vector_.Get() + size_, simple_vector_.Get() + size_ + 1);
             simple_vector_[index_position] = value;
         }
         else {
-            size_t new_capacity = std::max(size_ + 1, capacity_ * 2);
-            ArrayPtr<Type> local(capacity_);
-            std::copy(simple_vector_.Get(), simple_vector_.Get() + size_, local.Get());
-            std::copy_backward(simple_vector_.Get() + index_position, simple_vector_.Get() + size_, local.Get() + size_ + 1);
-            local[index_position] = value;
-            simple_vector_.swap(local);
-            capacity_ = new_capacity;
+            if (capacity_ != 0) {
+                size_t new_capacity = std::max(size_ + 1, capacity_ * 2);
+                ArrayPtr<Type> local(capacity_);
+                std::copy(simple_vector_.Get(), simple_vector_.Get() + size_, local.Get());
+                std::copy_backward(simple_vector_.Get() + index_position, simple_vector_.Get() + size_, local.Get() + size_ + 1);
+                local[index_position] = value;
+                simple_vector_.swap(local);
+                capacity_ = new_capacity;
+            }
+            else {
+                ArrayPtr<Type> local(1);
+                local[index_position] = value;
+                simple_vector_.swap(local);
+                ++capacity_;
+            }
         }
         ++size_;
         return &simple_vector_[index_position];
     }
 
     Iterator Insert(ConstIterator&& pos, Type&& value) {
-        if (begin() > pos && end() > pos) {
-            throw std::out_of_range("Out of range");
-        }
+        assert(pos >= begin());
+        assert(pos <= end());
         auto index_position = std::distance(cbegin(), pos);
-        if (capacity_ == 0) {
-            ArrayPtr<Type> local(1);
-            local[index_position] = std::move(value);
-            simple_vector_.swap(local);
-            ++capacity_;
-        }
-        else if (size_ < capacity_) {
+        if (size_ < capacity_) {
             std::move_backward(simple_vector_.Get() + index_position, simple_vector_.Get() + size_, simple_vector_.Get() + size_ + 1);
             simple_vector_[index_position] = std::move(value);
         }
         else {
-            size_t new_capacity = std::max(size_ + 1, capacity_ * 2);
-            ArrayPtr<Type> local(new_capacity);
-            std::move(simple_vector_.Get(), simple_vector_.Get() + size_,
-                local.Get());
-            std::move_backward(simple_vector_.Get() + index_position, simple_vector_.Get() + size_,
-                local.Get() + size_ + 1);
-            local[index_position] = std::move(value);
-            simple_vector_.swap(local);
-            capacity_ = new_capacity;
+            if (capacity_ != 0) {
+                size_t new_capacity = std::max(size_ + 1, capacity_ * 2);
+                ArrayPtr<Type> local(new_capacity);
+                std::move(simple_vector_.Get(), simple_vector_.Get() + size_,
+                    local.Get());
+                std::move_backward(simple_vector_.Get() + index_position, simple_vector_.Get() + size_,
+                    local.Get() + size_ + 1);
+                local[index_position] = std::move(value);
+                simple_vector_.swap(local);
+                capacity_ = new_capacity;
+            }
+            else {
+                ArrayPtr<Type> local(1);
+                local[index_position] = std::move(value);
+                simple_vector_.swap(local);
+                ++capacity_;
+            }
         }
         ++size_;
         return &simple_vector_[index_position];
     }
 
     void PopBack() noexcept {
-        if (size_) {
-            --size_;
-        }
+        assert(size_ != 0);
+        --size_;
     }
 
     Iterator Erase(ConstIterator pos) {
@@ -298,6 +295,12 @@ private:
     ArrayPtr<Type> simple_vector_;
     size_t size_ = 0;
     size_t capacity_ = 0;
+
+    void FillForMove(Iterator first, Iterator last) {
+        for (; first != last; ++first) {
+            *first = std::move(Type());
+        }
+    }
 };
 
 template <typename Type>
@@ -317,7 +320,7 @@ inline bool operator<(const SimpleVector<Type>& lhs, const SimpleVector<Type>& r
 
 template <typename Type>
 inline bool operator<=(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
-    return lhs < rhs || lhs == rhs;
+    return !(rhs < lhs);
 }
 
 template <typename Type>

@@ -25,6 +25,18 @@ public:
     ArrayPtr(const ArrayPtr&) = delete;
     ArrayPtr& operator=(const ArrayPtr&) = delete;
 
+    ArrayPtr(ArrayPtr&& other) {
+        std::swap(raw_ptr_, other.raw_ptr_);
+        other.raw_ptr_ = nullptr;
+    }
+
+    ArrayPtr& operator=(ArrayPtr&& other) {
+        if (this != &other) {
+            std::swap(raw_ptr_, other.raw_ptr_);
+        }
+        return *this;
+    }
+
     ~ArrayPtr() {
         delete[] raw_ptr_;
     }
