@@ -199,8 +199,7 @@ public:
     }
 
     Iterator Insert(ConstIterator pos, const Type& value) {
-        assert(pos >= begin());
-        assert(pos <= end()); 
+        assert(pos >= begin() && pos <= end()); 
         auto index_position = std::distance(cbegin(), pos);
         if (size_ < capacity_) {
             std::copy_backward(simple_vector_.Get() + index_position, simple_vector_.Get() + size_, simple_vector_.Get() + size_ + 1);
@@ -228,8 +227,7 @@ public:
     }
 
     Iterator Insert(ConstIterator&& pos, Type&& value) {
-        assert(pos >= begin());
-        assert(pos <= end());
+        assert(pos >= begin() && pos <= end());
         auto index_position = std::distance(cbegin(), pos);
         if (size_ < capacity_) {
             std::move_backward(simple_vector_.Get() + index_position, simple_vector_.Get() + size_, simple_vector_.Get() + size_ + 1);
