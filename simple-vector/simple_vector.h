@@ -75,12 +75,9 @@ public:
     }
 
     SimpleVector& operator=(const SimpleVector& rhs) {
-        if (&simple_vector_ != &rhs.simple_vector_) {
-            ArrayPtr<Type> local(rhs.capacity_);
-            std::copy(rhs.begin(), rhs.end(), local.Get());
-            simple_vector_.swap(local);
-            size_ = rhs.GetSize();
-            capacity_ = rhs.GetCapacity();
+        if (this != &rhs) {
+            SimpleVector local(rhs);
+            swap(local);
         }
         return *this;
     }
@@ -154,10 +151,10 @@ public:
     }
 
     void Resize(size_t new_size) {
-        if (size_ >= new_size) {
+        if (capacity_ >= new_size) {
             size_ = new_size;
         }
-        if (size_ < new_size && capacity_ >= new_size) {
+        if (size_ < new_size) {
             for (auto iterator = begin() + size_; iterator != begin() + new_size; ++iterator) {
                 *iterator = std::move(Type());
             }
@@ -199,14 +196,21 @@ public:
     }
 
     Iterator Insert(ConstIterator pos, const Type& value) {
-        assert(pos >= begin() && pos <= end()); 
+        assert(pos >= begin() && pos <= end());
         auto index_position = std::distance(cbegin(), pos);
         if (size_ < capacity_) {
             std::copy_backward(simple_vector_.Get() + index_position, simple_vector_.Get() + size_, simple_vector_.Get() + size_ + 1);
             simple_vector_[index_position] = value;
         }
         else {
-            if (capacity_ != 0) {
+            //Надеюсь, я верно поняла Ваш комментарий про ветку с нулевой вместимостью и ненулевой (для того, чтобы было более логично?)
+            if (capacity_ == 0) {
+                ArrayPtr<Type> local(1);
+                local[index_position] = value;
+                simple_vector_.swap(local);
+                ++capacity_;
+            }
+            else {
                 size_t new_capacity = std::max(size_ + 1, capacity_ * 2);
                 ArrayPtr<Type> local(capacity_);
                 std::copy(simple_vector_.Get(), simple_vector_.Get() + size_, local.Get());
@@ -214,12 +218,6 @@ public:
                 local[index_position] = value;
                 simple_vector_.swap(local);
                 capacity_ = new_capacity;
-            }
-            else {
-                ArrayPtr<Type> local(1);
-                local[index_position] = value;
-                simple_vector_.swap(local);
-                ++capacity_;
             }
         }
         ++size_;
@@ -234,7 +232,13 @@ public:
             simple_vector_[index_position] = std::move(value);
         }
         else {
-            if (capacity_ != 0) {
+            if (capacity_ == 0) {
+                ArrayPtr<Type> local(1);
+                local[index_position] = std::move(value);
+                simple_vector_.swap(local);
+                ++capacity_;
+            }
+            else {
                 size_t new_capacity = std::max(size_ + 1, capacity_ * 2);
                 ArrayPtr<Type> local(new_capacity);
                 std::move(simple_vector_.Get(), simple_vector_.Get() + size_,
@@ -245,19 +249,13 @@ public:
                 simple_vector_.swap(local);
                 capacity_ = new_capacity;
             }
-            else {
-                ArrayPtr<Type> local(1);
-                local[index_position] = std::move(value);
-                simple_vector_.swap(local);
-                ++capacity_;
-            }
         }
         ++size_;
         return &simple_vector_[index_position];
     }
 
     void PopBack() noexcept {
-        assert(size_ != 0);
+        assert(!IsEmpty());
         --size_;
     }
 
