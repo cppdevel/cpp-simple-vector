@@ -203,7 +203,6 @@ public:
             simple_vector_[index_position] = value;
         }
         else {
-            //Надеюсь, я верно поняла Ваш комментарий про ветку с нулевой вместимостью и ненулевой (для того, чтобы было более логично?)
             if (capacity_ == 0) {
                 ArrayPtr<Type> local(1);
                 local[index_position] = value;
